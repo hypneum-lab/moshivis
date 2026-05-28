@@ -8,8 +8,7 @@ import { ImageGallery } from "../../components/ImageGallery/ImageGallery";
 import { useModelParams, importantSettingsHaveChanged } from "../Conversation/hooks/useModelParams";
 import { ModelParams } from "../Conversation/components/ModelParams/ModelParams";
 import { env } from "../../env";
-import { useUserEmail } from "./hooks/useUserEmail";
-import { Input } from "../../components/Input/Input";
+import { useWebcam } from "./hooks/useWebcam";
 import { getAPIClient } from "./api/client";
 
 type Status = "connecting" | "in_queue" | "has_credentials" | "error" | "no_queue" | "idle" | "bypass";
@@ -39,7 +38,9 @@ export const Queue: FC = () => {
   const [workerAuthId, setWorkerAuthId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const overrideWorkerAddr = searchParams.get("worker_addr");
+  // Standalone fork: default to talking to the same host (bypass the queue),
+  // so opening "/" connects directly without a queue API or worker_addr param.
+  const overrideWorkerAddr = searchParams.get("worker_addr") ?? "same";
   const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState<boolean>(false);
   const [showMicrophoneAccessMessage, setShowMicrophoneAccessMessage] = useState<boolean>(false);
   const [shouldConnect, setShouldConnect] = useState<boolean>(false);
@@ -61,8 +62,7 @@ export const Queue: FC = () => {
   });
   const modalRef = useRef<HTMLDialogElement>(null);
 
-  let def_user_email = sessionStorage.getItem("userEmail");
-  const { userEmail, setUserEmail, error: emailError, validate } = useUserEmail(!!overrideWorkerAddr, (def_user_email == null) ? '' : def_user_email);
+  const { videoRef, ready: webcamReady, error: webcamError, start: startWebcam, capture: captureWebcam, stop: stopWebcam } = useWebcam();
 
   const audioContext = useRef<AudioContext | null>(null);
   const worklet = useRef<AudioWorkletNode | null>(null);
@@ -77,6 +77,13 @@ export const Queue: FC = () => {
       }
     };
   }, []);
+
+  // Request the webcam as soon as the entry screen is shown.
+  useEffect(() => {
+    if (!shouldConnect) {
+      startWebcam();
+    }
+  }, [shouldConnect, startWebcam]);
 
   const getMicrophoneAccess = useCallback(async () => {
     try {
@@ -110,15 +117,24 @@ export const Queue: FC = () => {
   }, [audioContext, worklet]);
 
   const onConnect = useCallback(async () => {
-    if (!validate(userEmail)) {
-      return;
-    }
     await startProcessor();
     const hasAccess = await getMicrophoneAccess();
     if (hasAccess) {
       setShouldConnect(true);
     }
-  }, [setShouldConnect, startProcessor, userEmail, getMicrophoneAccess, validate]);
+  }, [setShouldConnect, startProcessor, getMicrophoneAccess]);
+
+  // Snapshot the current webcam frame as the conversation image, then connect.
+  const onStartWithWebcam = useCallback(async () => {
+    const frame = captureWebcam();
+    if (frame) {
+      modelParams.setImageUrl(frame);
+    } else if (modelParams.imageUrl == undefined) {
+      modelParams.setImageUrl("/assets/images/demo/image" + Math.floor(1 + Math.random() * 19) + ".jpg");
+    }
+    stopWebcam();
+    await onConnect();
+  }, [captureWebcam, stopWebcam, onConnect, modelParams]);
 
   const status: Status = useMemo(() => {
     if (overrideWorkerAddr) {
@@ -223,7 +239,6 @@ export const Queue: FC = () => {
   if (status === "has_credentials" && workerAddr && audioContext.current && workerAuthId && sessionId && sessionAuthId && worklet?.current) {
     return (
       <Conversation
-        email={userEmail}
         workerAddr={overrideWorkerAddr ?? workerAddr}
         workerAuthId={workerAuthId}
         audioContext={audioContext as MutableRefObject<AudioContext>}
@@ -268,9 +283,9 @@ export const Queue: FC = () => {
         </div>
       </div>
       <div className="text-sm mt-10 mb-0">
-        <p>Add your <span className='cute-words'>email address</span> first, then feel free</p>
-        <p> to upload your own <span className='vis-words'>image</span> or select one below.</p>
-        <p>Uploaded images should be smaller than <span className='cute-words'>15 MB</span>.</p>
+        <p>Point your <span className='vis-words'>webcam</span> at the scene, then press <span className='cute-words'>Start</span>.</p>
+        <p>The current frame becomes what <span className='cute-words'>Moshi</span> sees for the conversation.</p>
+        <p>You can also pick a demo <span className='vis-words'>image</span> below instead.</p>
       </div>
       <div className="flex flex-grow justify-center items-center flex-col mb-0">
         {status == 'error' && <p className="text-center text-red-800 text-2xl">{error}</p>}
@@ -280,21 +295,25 @@ export const Queue: FC = () => {
             {showMicrophoneAccessMessage &&
               <p className="text-center">Please enable your microphone before proceeding</p>
             }
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
-              error={emailError ?? ""}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (modelParams.imageUrl == undefined) {
-                    modelParams.setImageUrl("/assets/images/demo/image" + Math.floor(1 + Math.random() * 19) + ".jpg")
-                  }
-                  onConnect();
-                }
-              }}
-            />
+            <div className="flex flex-col items-center gap-3">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="border border-white"
+                style={{ width: 320, height: 240, objectFit: "cover", background: "#000", transform: "scaleX(-1)" }}
+              />
+              {webcamError &&
+                <p className="text-center text-red-500">Webcam unavailable ({webcamError}) — pick a demo image below.</p>
+              }
+              <Button
+                onClick={onStartWithWebcam}
+                title={webcamReady ? "Capture the current webcam frame and start the conversation" : "Start the conversation"}
+              >
+                {webcamReady ? "Start with webcam" : "Start"}
+              </Button>
+            </div>
             <Button className="settingsbutton absolute top-4 right-4"
               id={importantSettingsHaveChanged(modelParams) ? 'changed' : 'default'}
               title={importantSettingsHaveChanged(modelParams) ? 'Change or reset MoshiVis here (Your current settings are different from the defaults)' : 'Change or reset settings here'}
@@ -318,7 +337,7 @@ export const Queue: FC = () => {
         }
       </div>
       <div className="mt-0 flex flex-grow justify-center items-center flex-col presentation mb-8">
-        <ImageGallery numImages={6} size={110} paramsSetter={modelParams.setImageUrl} clickAction={onConnect}></ImageGallery>
+        <ImageGallery numImages={6} size={110} paramsSetter={modelParams.setImageUrl} clickAction={() => { stopWebcam(); onConnect(); }}></ImageGallery>
       </div>
 
       <div className="text-center flex justify-end items-center flex-col">
