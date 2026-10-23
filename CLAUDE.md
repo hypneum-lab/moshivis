@@ -1,8 +1,8 @@
 # moshivis
 
-**Vendored fork of [kyutai-labs/moshivis](https://github.com/kyutai-labs/moshivis)** — a Vision-Speech Model (Moshi speech-text foundation + frozen PaliGemma2 vision encoder via cross-attention). Part of the Hypneum vision-speech exploration; treat as upstream, not first-party code.
+**Vendored fork of [kyutai-labs/moshivis](https://github.com/kyutai-labs/moshivis)** — a Vision-Speech Model (Moshi speech-text foundation + frozen PaliGemma2 vision encoder via cross-attention). Part of the Hypneum Lab vision-speech exploration; treat as upstream, not first-party code.
 
-Hypneum-specific notes (fork status, 2026 upstream-relevant work):
+Hypneum Lab-specific notes (fork status, 2026 upstream-relevant work):
 [`docs/hypneum-notes.md`](docs/hypneum-notes.md).
 
 ## Licensing — differs from workspace default
