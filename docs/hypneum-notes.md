@@ -69,6 +69,41 @@ candidate for evaluation.
   MoshiVis (MLX backend) with MiniCPM-o 4.5 on latency and response
   behaviour.
 
+- **NemotronLabs VoiceChat.** Balam et al. (NVIDIA), *NemotronLabs
+  VoiceChat: An Open Full-duplex Speech-to-Speech Model with Tool
+  Calling Capabilities*,
+  [arXiv:2609.21967](https://arxiv.org/abs/2609.21967) (2026-09-18).
+  It is an open full-duplex speech baseline with native tool calling
+  and incremental user transcription, reported on Full-Duplex-Bench
+  1.0/1.5/3.0 and VoiceBench. The abstract does not mention vision, so
+  it is a speech-side comparator only.
+- **DuplexOmni.** Huang et al., *DuplexOmni: Real-Time Listening,
+  Seeing, Thinking, and Speaking for Full-Duplex Interaction*,
+  [arXiv:2606.09186](https://arxiv.org/abs/2606.09186) (2026-06-08,
+  before the window). It is end-to-end full-duplex over streaming
+  speech **and video**, the video-capable successor to MoshiVis's
+  still-image design.
+- **FD-LHB.** *Why Full-Duplex Speech Models Collapse in Long
+  Conversations*, ICLR 2027 submission
+  [SbI8ap4e6o](https://openreview.net/forum?id=SbI8ap4e6o) (anonymous
+  review stage). It introduces a long-horizon benchmark and reports
+  that models exhaust context within minutes. It is a candidate for a
+  moshivis long-horizon robustness check.
+- **DuplexChat corpus.** Nakata, Saito, Saruwatari, *DuplexChat:
+  Constructing Speaker-Separated Full-Duplex Dialogue Speech at Scale
+  for Spoken Dialogue Language Models*,
+  [arXiv:2607.04941](https://arxiv.org/abs/2607.04941) (2026-07-06).
+  It is an open speaker-separated full-duplex corpus built from
+  podcasts. Check the licence of each source podcast before any use.
+
+### Kyutai release status
+
+Kyutai released nothing new for vision-speech in the July to October
+2026 window. Its site lists only speech-side and other items (for
+example Pocket TTS updates on 2026-08-25, 2026-09-28 and 2026-10-20),
+and no MoshiVis release was found. The vendored commit `8624f4e`
+therefore remains upstream's latest.
+
 ## Supply-chain reminder
 
 Any weight swap is a dependency bump. Under the workspace policy it
